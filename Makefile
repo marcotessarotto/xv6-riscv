@@ -1,3 +1,9 @@
+KBUILD_OUTPUT :=  ./koutput
+UBUILD_OUTPUT :=  ./uoutput
+
+abs_objtree := $(shell mkdir -p $(KBUILD_OUTPUT) && cd $(KBUILD_OUTPUT) && pwd)
+abs_objtree := $(shell mkdir -p $(UBUILD_OUTPUT) && cd $(UBUILD_OUTPUT) && pwd)
+
 K=kernel
 U=user
 
@@ -33,7 +39,7 @@ OBJS = \
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
 #TOOLPREFIX = 
-
+TOOLPREFIX=riscv64-unknown-elf-
 # Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX
 TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' >/dev/null 2>&1; \
@@ -72,6 +78,7 @@ CFLAGS += -fno-pie -nopie
 endif
 
 LDFLAGS = -z max-page-size=4096
+
 
 $K/kernel: $(OBJS) $K/kernel.ld $U/initcode
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -138,12 +145,13 @@ fs.img: mkfs/mkfs README $(UPROGS)
 
 -include kernel/*.d user/*.d
 
+# $(shell mkdir -p $(KBUILD_OUTPUT) && cd $(KBUILD_OUTPUT) && pwd)
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
 	$U/initcode $U/initcode.out $K/kernel fs.img \
 	mkfs/mkfs .gdbinit \
-        $U/usys.S \
+        $U/usys.S $(KBUILD_OUTPUT)/* \
 	$(UPROGS)
 
 # try to generate a unique GDB port

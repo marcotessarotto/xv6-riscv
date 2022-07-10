@@ -1,0 +1,25 @@
+
+# qemu-system-riscv64
+sudo apt install qemu-system-misc
+
+download riscv-gnu-toolchain from:
+https://github.com/riscv-collab/riscv-gnu-toolchain/releases
+
+extract to /opt/riscv
+
+
+
+export TOOLPREFIX=riscv64-unknown-elf-
+export PATH=$PATH:/opt/riscv/bin/
+
+make
+
+make qemu
+
+
+book:
+https://pdos.csail.mit.edu/6.828/2021/xv6/book-riscv-rev2.pdf
+
+resources:
+https://pdos.csail.mit.edu/6.S081/2021/
+
