@@ -6,35 +6,57 @@ abs_objtree := $(shell mkdir -p $(UBUILD_OUTPUT) && cd $(UBUILD_OUTPUT) && pwd)
 
 K=kernel
 U=user
+KRN_SRC=kernel
+
+KRN_C_SRC = kernel/bio.c      kernel/file.c    kernel/log.c   kernel/plic.c    kernel/ramdisk.c    kernel/start.c    kernel/sysfile.c  kernel/uart.c \
+  kernel/console.c  kernel/fs.c      kernel/main.c  kernel/printf.c  kernel/sleeplock.c  kernel/string.c   kernel/sysproc.c  kernel/virtio_disk.c \
+  kernel/exec.c     kernel/kalloc.c  kernel/pipe.c  kernel/proc.c    kernel/spinlock.c   kernel/syscall.c  kernel/trap.c     kernel/vm.c
+  
+# removed: ramdisk.c  
+KRN_C_SRC2 = bio.c      file.c    log.c   plic.c      start.c    sysfile.c  uart.c \
+  console.c  fs.c      main.c  printf.c  sleeplock.c  string.c   sysproc.c  virtio_disk.c \
+  exec.c     kalloc.c  pipe.c  proc.c    spinlock.c   syscall.c  trap.c     vm.c  
+
+#removed: ramdisk.o 
+KRN_C_OBJ = bio.o     file.o   log.o  plic.o     start.o   sysfile.o uart.o \
+  console.o fs.o     main.o printf.o sleeplock.o string.o  sysproc.o virtio_disk.o \
+  exec.o    kalloc.o pipe.o proc.o   spinlock.o  syscall.o trap.o    vm.o 
+
+
+KRN_ASM_SRC = kernel/entry.S  kernel/kernelvec.S  kernel/swtch.S  kernel/trampoline.S
+
+KRN_ASM_OBJ = entry.o  kernelvec.o  swtch.o  trampoline.o
+
+KRN_ASM_OBJ2 = $(KBUILD_OUTPUT)/entry.S  $(KBUILD_OUTPUT)/kernelvec.S  $(KBUILD_OUTPUT)/swtch.S  $(KBUILD_OUTPUT)/trampoline.S
 
 OBJS = \
-  $K/entry.o \
-  $K/start.o \
-  $K/console.o \
-  $K/printf.o \
-  $K/uart.o \
-  $K/kalloc.o \
-  $K/spinlock.o \
-  $K/string.o \
-  $K/main.o \
-  $K/vm.o \
-  $K/proc.o \
-  $K/swtch.o \
-  $K/trampoline.o \
-  $K/trap.o \
-  $K/syscall.o \
-  $K/sysproc.o \
-  $K/bio.o \
-  $K/fs.o \
-  $K/log.o \
-  $K/sleeplock.o \
-  $K/file.o \
-  $K/pipe.o \
-  $K/exec.o \
-  $K/sysfile.o \
-  $K/kernelvec.o \
-  $K/plic.o \
-  $K/virtio_disk.o
+  $(KBUILD_OUTPUT)/entry.o \
+  $(KBUILD_OUTPUT)/start.o \
+  $(KBUILD_OUTPUT)/console.o \
+  $(KBUILD_OUTPUT)/printf.o \
+  $(KBUILD_OUTPUT)/uart.o \
+  $(KBUILD_OUTPUT)/kalloc.o \
+  $(KBUILD_OUTPUT)/spinlock.o \
+  $(KBUILD_OUTPUT)/string.o \
+  $(KBUILD_OUTPUT)/main.o \
+  $(KBUILD_OUTPUT)/vm.o \
+  $(KBUILD_OUTPUT)/proc.o \
+  $(KBUILD_OUTPUT)/swtch.o \
+  $(KBUILD_OUTPUT)/trampoline.o \
+  $(KBUILD_OUTPUT)/trap.o \
+  $(KBUILD_OUTPUT)/syscall.o \
+  $(KBUILD_OUTPUT)/sysproc.o \
+  $(KBUILD_OUTPUT)/bio.o \
+  $(KBUILD_OUTPUT)/fs.o \
+  $(KBUILD_OUTPUT)/log.o \
+  $(KBUILD_OUTPUT)/sleeplock.o \
+  $(KBUILD_OUTPUT)/file.o \
+  $(KBUILD_OUTPUT)/pipe.o \
+  $(KBUILD_OUTPUT)/exec.o \
+  $(KBUILD_OUTPUT)/sysfile.o \
+  $(KBUILD_OUTPUT)/kernelvec.o \
+  $(KBUILD_OUTPUT)/plic.o \
+  $(KBUILD_OUTPUT)/virtio_disk.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -68,6 +90,8 @@ CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+KRN_CFLAGS := -o $(KBUILD_OUTPUT)
+USR_CFLAGS := -o $(UBUILD_OUTPUT)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
@@ -80,10 +104,23 @@ endif
 LDFLAGS = -z max-page-size=4096
 
 
-$K/kernel: $(OBJS) $K/kernel.ld $U/initcode
+ 
+
+$K/kernel: $(KRN_C_OBJ) $(KRN_ASM_OBJ)  $K/kernel.ld $U/initcode
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
+
+# http://www.gnu.org/software/make/manual/make.html#Static-Pattern
+# https://stackoverflow.com/a/40621556/974287
+# https://stackoverflow.com/a/18548815/974287
+$(KRN_C_OBJ) : %.o : kernel/%.c
+	$(CC) $(CFLAGS) -c $<  -o $(KBUILD_OUTPUT)/$@  
+	
+$(KRN_ASM_OBJ) : %.o : kernel/%.S
+	$(CC) $(CFLAGS) -c $<  -o $(KBUILD_OUTPUT)/$@ 
+
+
 
 $U/initcode: $U/initcode.S
 	$(CC) $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $U/initcode.S -o $U/initcode.o
