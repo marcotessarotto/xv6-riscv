@@ -9,6 +9,7 @@
 //   control-p -- print process list
 //
 
+// stdarg.h is part of the standard include files
 #include <stdarg.h>
 
 #include "types.h"
